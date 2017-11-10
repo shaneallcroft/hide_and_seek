@@ -10,9 +10,14 @@ project(hide_and_seek)
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   roscpp
-  rospy
   sensor_msgs
   std_msgs
+  amcl
+  dwa_local_planner
+  move_base
+  map_server
+  nav_core
+  people
 )
 
 ## System dependencies are found with CMake's conventions

@@ -1,0 +1,10 @@
+<launch>
+
+  <node pkg="map_server" type="map_server" name="map_server" args="room_map.yaml" respawn="true" />
+  <node pkg="move_base" type="move_base" name="move_base" output="screen" respawn="false" />
+  <node pkg="people" type="leg_detector" name="leg_detector" />
+  <param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS" />
+  <include file="$(find turtlebot_navigation)/config/amcl_turtlebot.launch" />
+  <include file="$(find turtlebot_navigation)/config/move_base_turtlebot.launch" />
+  
+</launch>
