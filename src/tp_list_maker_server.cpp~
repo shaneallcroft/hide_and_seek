@@ -1,0 +1,118 @@
+//I'm here to  S E R V E  you ;) 
+#include "ros/ros.h"
+#include "hide_and_seek/tp_msg.h"
+#include "hide_and_seek/tp_map_srv.h"
+#include "nav_msgs/OccupancyGrid.h"//PICK AN ACTUAL MAP MESSAGE YO MAYBE OCCUPANCY GRID??
+#include "nav_msgs/GetMap.h"
+
+class Mratplg//Map Reciever and Tourist Point List Generator
+{
+
+public:
+  Mratplg()
+  {
+    tpl_service = n.advertiseService("generate_new_tp_list", generate_new_tpl);
+    map_reciever = n.serviceClient<map_server>("map_server");//this cant be right
+    ROS_INFO("Ready to generate some A1 TPL's");
+    sub = n.subscribe("amcl_pose", 10, &Mratplg::current_pos_retriever, this);
+  }
+      //prototypes bb
+  bool Mratplg::generate_new_tpl(hide_and_seek::tp_map_srv &req, hide_and_seek::tp_map_srv &res);
+  void current_pos_retriever(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& current_pos);
+private:
+  ros::NodeHandle n;
+  ros::ServiceServer tpl_service;
+  ros::ServiceClient map_reciever;
+  geometry_msgs::PoseWithCovarianceStampedMessage current_position;
+  //ros::ServiceClient current_position;
+  ros::Subscriber sub;
+};
+
+  
+void Mratplg::current_pos_retriever(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& current_pos){
+  this.current_position = current_pos;
+}//JUST FINISHED THIS 12:36 AM December 2nd
+  
+bool Mratplg::generate_new_tpl(hide_and_seek::tp_map_srv &req, hide_and_seek::tp_map_srv &res)
+{
+  nav_msgs::GetMap get_map_srv;//no values needed since this service only gets the map B)
+  if(map_reciever.call(get_map_srv))
+  {
+    OccupancyGrid map = get_map_srv.response.map;//not positive if this is completely correct
+  }
+
+  //Probs gotta partition the map into easier to manage chunks or this is gonna take a while
+  //perhaps ONLY analyze a certain distance from the current position?
+  int[map.info.width * map.info.height][4] forces_at_play = { };//Seed the documentation for a fly af explanation
+  int distance_to_left_edge = 0;
+  int distance_to_right_edge = map.info.width;
+  for( int i = 0; i < map.info.width * map.info.height; i++)
+  {
+    if(map.data[i] != 100)
+    {
+      continue;
+    }
+    //THE STUFF BELOW ALMOST DEF DOESNT WORK: I NEED TO FIX THIS SHIT
+    distance_to_left_edge = (i >= map.info.width) ? i % map.info.width : i;
+    distance_to_right_edge = (i >= map.info.width) ? map.info.width - ((i % map.info.width) + 1) : map.info.width - i;
+    distance_to_top_edge = ((i - (map.info.width * 3)) > map.info.width) ? 3 : ((i - (map.info.width * 2) > map.info.width)) ? 2 : ( i > map.info.width) ? 1 : 0;//they call me tsar of the ternaries babEEEE!
+    distance_to_bottom_edge = ((i + (map.info.width * 3)) < map.info.width * map.info.length) ? 3 : ((i + (map.info.width * 2) < map.info.width * map.info.length)) ? 2 : ( map.info.width * map.info.length > i + map.info.width) ? 1 : 0;//shoouuuuuuld work
+    //we actually dont care if it gives force values to occupied spaces, there should be no way for the bot to get in.
+    
+    switch(distance_to_left_edge){
+    case 3:
+      forces_at_play[i-3][1] += 1;
+    case 2:
+      forces_at_play[i-2][1] += 2;
+    case 1:
+      forces_at_play[i-1][1] += 3;
+    }
+    switch(distance_to_right_edge){
+    case 3:
+      forces_at_play[i+3][1] -= 1;
+    case 2:
+      forces_at_play[i+2][1] -= 2;
+    case 1:
+      forces_at_play[i+1][1] -= 3;
+    }
+    switch(distance_to_top_edge){
+    case 3:
+      forces_at_play[i - (map.info.width * 3)][3] += 1;
+    case 2:
+      forces_at_play[i - (map.info.width * 2)][3] += 2;
+    case 1:
+      forces_at_play[i - (map.info.width * 1)][3] += 3;
+    }
+    switch(distance_to_bottom_edge){
+    case 3:
+      forces_at_play[i + (map.info.width * 3)][3] -= 1;
+    case 2:
+      forces_at_play[i + (map.info.width * 2)][3] -= 2;
+    case 1:
+      forces_at_play[i + (map.info.width * 1)][3] -= 3;
+    }
+
+    
+    
+  }
+
+  return true;
+}
+
+
+
+
+int main(int argc, char **argv)
+{
+  ros::init(argc, argv, "tp_list_maker_server");
+
+  Mratplg mratplgster;
+  ros::spin();
+
+  return 0;
+}
+
+    
+
+
+// distance_to_left_edge = ( (((int) current_position.position.x + (int) (current_position.position.y * map.info.width * -1)) % map.info.width) - map.info.width;........soon
