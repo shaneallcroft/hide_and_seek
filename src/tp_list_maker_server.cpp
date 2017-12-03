@@ -1,11 +1,9 @@
-//I'm here to  S E R V E  you ;) 
+1//I'm here to  S E R V E  you ;) 
 #include "ros/ros.h"
 #include "hide_and_seek/tp_msg.h"
 #include "hide_and_seek/tp_map_srv.h"
 #include "nav_msgs/OccupancyGrid.h"//PICK AN ACTUAL MAP MESSAGE YO MAYBE OCCUPANCY GRID??
 #include "nav_msgs/GetMap.h"
-
-#define NUM_OF_TURNS 8
 
 class Mratplg//Map Reciever and Tourist Point List Generator
 {
@@ -20,21 +18,21 @@ public:
   }
       //prototypes bb
   bool Mratplg::generate_new_tpl(hide_and_seek::tp_map_srv::Request &req, hide_and_seek::tp_map_srv::Response &res);
-  void current_pos_retriever(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& current_pos);
+  // void current_pos_retriever(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& current_pos);
 private:
   ros::NodeHandle n;
   ros::ServiceServer tpl_service;
   ros::ServiceClient map_reciever;
-  geometry_msgs::PoseWithCovarianceStampedMessage current_position;
+  //geometry_msgs::PoseWithCovarianceStampedMessage current_position;
   //ros::ServiceClient current_position;
   ros::Subscriber sub;
 };
 
-  
+/*  
 void Mratplg::current_pos_retriever(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& current_pos){
   this.current_position = current_pos;
 }//JUST FINISHED THIS 12:36 AM December 2nd
-  
+*/  
 bool Mratplg::generate_new_tpl(hide_and_seek::tp_map_srv::Request &req, hide_and_seek::tp_map_srv::Response &res)
 {
   nav_msgs::GetMap get_map_srv;//no values needed since this service only gets the map B)
@@ -43,9 +41,112 @@ bool Mratplg::generate_new_tpl(hide_and_seek::tp_map_srv::Request &req, hide_and
     OccupancyGrid map = get_map_srv.response.map;//not positive if this is completely correct
   }
 
-  //Probs gotta partition the map into easier to manage chunks or this is gonna take a while
-  //perhaps ONLY analyze a certain distance from the current position?
-  int[map.info.width * map.info.height][4] forces_at_play = { };//Seed the documentation for a fly af explanation
+  int x_min, x_max, y_min, y_max = -2;
+  //pick a new reSOLUTIon hereish?
+
+  boolean prev_check = false;
+  int miniverse_index = 0; 
+  //TODO(shaneallcroft): (after launchpad presentations) accomodate a room system
+  for (size_t x = 0; x < map.info.width; ++x) {
+    for (size_t y = 0; y < map.info.height; ++y) {
+      /* I _think_ this is right -- I'll check the GMapping source. */
+      size_t idx = map.info.width * x + y;
+      if(map.data[idx] == 0 && x_min == -2){  /* weird if it finds an isolated open space it cant get to but i dont think thats very plausible*/
+	x_min = x;
+	y_min = y;
+      }
+      else if(map.data[idx] == 0){
+	x_max = x;  //no other requirements besides this because the x and y will always be at their highest
+	y_max = y;
+      }
+    }
+  }
+
+  res.miniverse[] = new hide_and_seek::tp_msg[ (x_max - x_min) * (y_max - y_min) ];  //tp miniverse
+
+  for(int x = x_min; x <= x_max; ++x)
+  {
+    for(int y = y_min; y <= y_max; ++y)
+    {
+      /*
+	the following code iterates thru every spot on the grid in the room to see if it is occupied
+	if it is it the 8 surrounding spots on the grid are analyzed, if they are free, a tourist point is marked at the central spot first checked at the beginning of the loop
+	it could be done with a single if statement with a ton of && operators but thats so fucking ugly and this way shorts circuits anyway soooo.......
+*/
+      
+      size_t idx = map.info.width * x + y;/* Thank you Hunter! :) */
+      if(prev_check)
+      {
+	if(map.data[idx - map.info.width + 1] == 0)
+	{
+	  if(map.data[idx + 1] == 0)
+	  {
+	    if(map.data[idx + map.info.width + 1] == 0)
+	    {
+		hide_and_seek::tp_msg tourist_point;
+		tourist_point.tp_pos.x = x;
+		tourist_point.tp_pos.y = y;
+		tourist_point.visited = false;
+		res.miniverse[miniverse_index] = tourist_point;
+		++miniverse_index;
+		prev_check = true;
+		continue;
+	    }
+	  }
+	}        
+      }
+      if(map.data[idx] == 0)
+      {
+	if(map.data[idx - map.info.width - 1] == 0)
+	{
+	  if(map.data[idx - map.info.width] == 0)
+	  {
+	    if(map.data[idx - map.info.width + 1] == 0)
+	    {
+	      if(map.data[idx - 1] == 0)
+	      {
+		if(map.data[idx + 1] == 0)
+		{
+		  if(map.data[idx + map.info.width - 1] == 0)
+		  {
+		    if(map.data[idx + map.info.width] == 0)
+		    {
+		      if(map.data[idx + map.info.width + 1] == 0)
+		      {
+			 ROS_INFO("Tourist point marked at ( %ld , %ld )",(long int) x, (long int) y);
+			 hide_and_seek::tp_msg tourist_point;
+			 tourist_point.tp_pos.x = x;
+			 tourist_point.tp_pos.y = y;
+			 tourist_point.visited = false;
+			 res.miniverse[miniverse_index] = tourist_point;
+			 ++miniverse_index;
+			 prev_check = true;
+			 continue;
+		      }
+		    }
+		  }
+		}
+	      }
+	    }
+	  }
+	}  
+      }
+      prev_check = false;
+    }
+  }
+  
+  
+  /* SHANE'S WEIRD OCCUPANCY GRID FORCE CODE GRAVEYARD BELOW PAY YOUR RESPECTS HERE
+
+     "COME IN PEACE
+
+     REST IN PIECES"
+
+     "On the shoulders of giants..... In the arms of an angel.............."
+
+     "If something is learned, nothing is truly lost.... :)"
+
+int[map.info.width * map.info.height][4] forces_at_play = { };//Seed the documentation for a fly af explanation
   int distance_to_left_edge = 0;
   int distance_to_right_edge = map.info.width;
   for( int i = 0; i < map.info.width * map.info.height; i++)
@@ -212,11 +313,12 @@ bool Mratplg::generate_new_tpl(hide_and_seek::tp_map_srv::Request &req, hide_and
 										     
     }
   }
+  */
   return true;
 }
 
 
-
+//void mark_tp( hide_and_seek::tp_map_srv::Response &res , int x, int y);
 
 int main(int argc, char **argv)
 {
@@ -228,7 +330,14 @@ int main(int argc, char **argv)
   return 0;
 }
 
-    
-
-
+/*int mark_tp( hide_and_seek::tp_map_srv::Response &res, int x, int y, int  )  //ehhhhh not really nessesary to make this a function but its neato
+{
+  hide_and_seek::tp_msg tourist_point;
+  tourist_point.tp_pos.x = x;
+  tourist_point.tp_pos.y = y;
+  tourist_point.visited = false;
+  res.miniverse[miniverse_index] = tourist_point;
+  ++miniverse_index;
+}
+*/
 // distance_to_left_edge = ( (((int) current_position.position.x + (int) (current_position.position.y * map.info.width * -1)) % map.info.width) - map.info.width;........soon

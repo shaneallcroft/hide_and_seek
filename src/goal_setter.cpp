@@ -24,7 +24,6 @@ ros::Publisher goal_pub;
   geometry_msgs::PoseWithCovarianceStampedMessage current_position;
   //ros::ServiceClient current_position;
   ros::Subscriber sub;
-
 };
 
 void GoalSetter::current_pos_retriever(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& current_pos){

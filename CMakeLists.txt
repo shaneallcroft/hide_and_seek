@@ -112,7 +112,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES hide_and_seek
-  CATKIN_DEPENDS geometry_msgs roscpp rospy sensor_msgs std_msgs amcl message_runtime dwa_local_planner nav_core people move_base map_server
+  CATKIN_DEPENDS geometry_msgs roscpp rospy sensor_msgs std_msgs
 #  DEPENDS system_lib
 )
 
