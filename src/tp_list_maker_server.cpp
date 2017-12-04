@@ -13,9 +13,9 @@ public:
   Mratplg()
   {
     tpl_service = n.advertiseService("generate_new_tp_list", generate_new_tpl);
-    map_reciever = n.serviceClient<map_server>("map_server");//this cant be right
+    map_reciever = n.serviceClient<nav_msgs::GetMap>("map_server");//this might be right
     ROS_INFO("Ready to generate some A1 TPL's");
-    number_of_times_map_refreshed;
+    number_of_times_map_refreshed = 0;
     //sub = n.subscribe("amcl_pose", 10, &Mratplg::current_pos_retriever, this);
   }
       //prototypes bb
@@ -72,14 +72,14 @@ bool Mratplg::generate_new_tpl(hide_and_seek::tp_map_srv::Request &req, hide_and
 	y_min = y;
       }
       else if(map.data[idx] == 0){
-	x_max = x;  //no other requirements besides this because the x and y will always be at their highest
+	x_max = x;  //no other requirements, this is because the x and y will always be at their highest
 	y_max = y;
       }
     }
   }
   
   res.miniverse[] = new hide_and_seek::tp_msg[ (x_max - x_min) * (y_max - y_min) ];  //tp miniverse
-  
+  // ^^ is this legal? i dont see why it would be
   for(int x = x_min; x <= x_max; ++x)
   {
     for(int y = y_min; y <= y_max; ++y)
@@ -99,6 +99,7 @@ bool Mratplg::generate_new_tpl(hide_and_seek::tp_map_srv::Request &req, hide_and
 	  {
 	    if(map.data[idx + map.info.width + 1] == 0)
 	    {
+	        ROS_INFO("Tourist point marked at ( %ld , %ld )",(long int) x, (long int) y);
 		hide_and_seek::tp_msg tourist_point;
 		tourist_point.tp_pos.x = x;
 		tourist_point.tp_pos.y = y;
@@ -154,6 +155,8 @@ bool Mratplg::generate_new_tpl(hide_and_seek::tp_map_srv::Request &req, hide_and
   res.miniverse_size = miniverse_index + 1;
   //bool can_be_trusted = false;
 
+  //the below, unfinished, code's purpose is to remap the tourist points to counterparts in another tpl after changes have been oberved to the map. TODO(shaneallcroft) do that yo!
+  
   if(req.miniverse_size == res.miniverse_size && (int)(res.miniverse[miniverse_index].tp_pos.x - req.miniverse[miniverse_index].tp_pos.x) / PROXIMITY_THRESHOLD == 0 && (int)(res.miniverse[miniverse_index].tp_pos.y - req.miniverse[miniverse_index].tp_pos.y) / PROXIMITY_THRESHOLD == 0)  //ROS help us if this if evaluates false...
   {
     return true;  

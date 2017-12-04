@@ -7,7 +7,7 @@
 #include <actionlib/client/simple_action_client.h>
 #include <math.h>
 
-#include PROXIMITY_THRESHOLD 4
+#define PROXIMITY_THRESHOLD 4
 
 class GoalSetter//Map Reciever and Tourist Point List Generator
 {
@@ -19,7 +19,7 @@ public:
     
     sub = n.subscribe("amcl_pose", 10, &GoalSetter::current_pos_retriever, this);
     first_spin = true;
-    int goal_index -1;
+    goal_index = -1;
     ros::spinOnce();  //spun for her pleasure..... and to get the initial position cause set_goal needs it
     tpmap_reciever = n.serviceClient<hide_and_seek::tp_map>("generate_new_tp_list");  //this cant be right
     //set_goalster = n.advertiseService("")
@@ -29,12 +29,14 @@ public:
       ROS_INFO("Waiting for the move_base action server to come up");
     }  //in constructor so it doesnt wait 5 sec after every tourist point
     //ottpm.request.postcard = false;
+    person_alert = n.subscribe("person_present", 10);
     this.set_goal();
   }
       //prototypes bb
   void GoalSetter::set_goal(hide_and_seek::tp_map_srv::Request &req, hide_and_seek::tp_map_srv::Response &res);
   void current_pos_retriever(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& current_pos);
-
+  void GoalSetter::person_alert_callback(const std_msgs::Bool::ConstPtr& person_present_msg)
+  
 private:
   ros::NodeHandle n;
   ros::ServiceClient tpmap_reciever;
@@ -42,24 +44,38 @@ private:
   geometry_msgs::PoseWithCovarianceStampedMessage current_position;
   //ros::ServiceClient current_position;
   ros::Subscriber sub;
+  ros::Subscriber person_alert;
   actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> action_client;
   move_base_msgs::MoveBaseGoal current_goal;
-  hide_and_seek::tp_map_srv ottpm;
+  hide_and_seek::tp_map_srv ottpm;  //The one true tourist point map
   bool first_spin;
   int goal_index;
   //ros::ServiceServer set_goalster;
 };
 
-void GoalSetter::current_pos_retriever(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& current_pos){
+void GoalSetter::current_pos_retriever(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& current_pos){  //I think the ConstPtr thing there is extraneous   LOL JK
   this.current_position = current_pos;
-  if(first_spin) return;
+  if(first_spin)
+  {
+    first_spin = false;
+    return;
+  }  
   
-  if( (int)(current_position.pose.x - current_goal.pose.x) / PROXIMITY_THRESHOLD == 0 && (int)(current_position.pose.y - current_goal.pose.y) / PROXIMITY_THRESHOLD == 0)// i.e. if(close enough)
+  if( (int)(current_position.pose.position.x - current_goal.pose.position.x) / PROXIMITY_THRESHOLD == 0 && (int)(current_position.pose.position.y - current_goal.pose.position.y) / PROXIMITY_THRESHOLD == 0)// i.e. if(close enough)
   {
       this.set_goal();
-      ottpm.miniverse
   }
 }//JUST FINISHED THIS 12:36 AM December 2nd
+
+void GoalSetter::person_alert_callback(const std_msgs::Bool::ConstPtr& person_present_msg)
+{
+  if(person_present_msg->data)
+  {
+    move_base_msgs::MoveBaseGoal goal;
+    current_goal.target_pose.header.frame_id = "base_link";
+    current_goal.target_pose.header.stamp = ros::Time::now();
+  }
+}
 
 //call back function for 
 
@@ -72,16 +88,16 @@ void GoalSetter::set_goal()
 //find closest point and make that the new goal.
     
     move_base_msgs::MoveBaseGoal goal;
-    current_goal.target_pose.header.frame_id = "base_link";
-    current_goal.target_pose.header.stamp = ros::Time::now();
+    goal.target_pose.header.frame_id = "base_link";
+    goal.target_pose.header.stamp = ros::Time::now();
     hide_and_seek::tp_msg tp_at_current_location;
-    tp_at_current_location.tp_pos.x = current_position.pose.x;
-    tp_at_current_location.tp_pos.y = current_position.pose.y;
+    tp_at_current_location.tp_pos.x = current_position.pose.position.x;
+    tp_at_current_location.tp_pos.y = current_position.pose.position.y;
     int index_of_closest_tp = 0;
     float closest_distance = pow(pow((tp_at_current_location.tp_pos.x - ottpm.miniverse[i].tp_pos.x),2) + pow((tp_at_current_location.tp_pos.y - ottpm.miniverse[index_of_closest_tp].y), 2), .5);
     if(ottpm.response.miniverse_size == 0)
     {
-      ROS_INFO("I checked the WHOLE. YOU WON?");//this seems like a dumb ending
+      ROS_INFO("I checked the WHOLE ROOM. YOU WON?");//this seems like a dumb ending
       return;
     }
     for(int i = 0; i < ottpm.response.miniverse_size; ++i)
@@ -104,6 +120,7 @@ void GoalSetter::set_goal()
     current_goal.target_pose.pose.position.x = ottpm.response.miniverse[goal_index].tp_pos.x;
     current_goal.target_pose.pose.position.y = ottpm.response.miniverse[goal_index].tp_pos.y;
     ROS_INFO("New goal chosen at x=%ld, y=%ld" (long int)current_goal.target_pose.pose.position.x, current_goal.target_pose.pose.position.y);
+    action_client.sendGoal(current_goal);
   }
   return true;
 }
