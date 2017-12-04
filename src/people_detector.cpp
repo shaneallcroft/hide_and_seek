@@ -63,31 +63,6 @@ void PeopleFinder::legs_detect_callback(const people_msgs::PositionMeasurementAr
     seen_msg.data = false;
     //TODO Add a random quote from a skyrim guard like "Must've been my imagination" to ROS_INFO as a flavorful "give up" text
     person_present_notifier.publish(seen_msg);
-    /*          The code in this comment is for finding the specific angle between the bot and the legs then turning towards the legs just the right amount, this code is not complete, and is not top priority to get working by presentation time
-
-      
-
-    //Shoutout to Abulbra over at ros answers dot org
-    tf::StampedTransform stmp_tf;
-    geometry_msgs::PoseStamped robot_pose;
-    double yaw_r(50);
-    try
-    {
-      listener.lookupTransform("/map","/base_link", ros::Time(0), stmp_tf);
-    
-      robot_pose.pose.orientation.x = poseRobot.getRotation().getX();
-      robot_pose.pose.orientation.y = poseRobot.getRotation().getY();
-      robot_pose.pose.orientation.z = poseRobot.getRotation().getZ();
-      robot_pose.pose.orientation.w = poseRobot.getRotation().getW();
-
-      yaw_r = tf::getYaw(robot_pose.pose.orientation);
-    }
-    catch(tf::TransformException &ex)
-    {
-      ROS_INFO("ERROR: NO ROBOT POSE");
-    }
-
-    */
     
   }
 }
@@ -115,17 +90,15 @@ void PeopleFinder::face_detect_callback(const people_msgs::PositionMeasurementCo
 
 void PeopleFinder::current_pos_retriever(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& current_pos){
   this.current_position = current_pos->pose;
-}
-
-/*void PeopleFinder::legs_detected()
-{
-  
-}*/
-  
+} 
 
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "person_detector");
+
+  PeopleFinder();
+
+  ros::spin();
   
   return 0;
 }

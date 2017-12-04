@@ -14,21 +14,17 @@ class GoalSetter//Map Reciever and Tourist Point List Generator
 
 public:
   GoalSetter()
-  {
-//tpl_service = n.advertiseService("generate_new_tp_list", generate_new_tpl);
-    
+  {    
     sub = n.subscribe("amcl_pose", 10, &GoalSetter::current_pos_retriever, this);
     first_spin = true;
     goal_index = -1;
     ros::spinOnce();  //spun for her pleasure..... and to get the initial position cause set_goal needs it
     tpmap_reciever = n.serviceClient<hide_and_seek::tp_map>("generate_new_tp_list");  //this cant be right
-    //set_goalster = n.advertiseService("")
     action_client("move_base", false);  //I'm not positive whether this should be true
     while(!action_client.waitForServer( ros::Duration(5.0) ))
     {
       ROS_INFO("Waiting for the move_base action server to come up");
     }  //in constructor so it doesnt wait 5 sec after every tourist point
-    //ottpm.request.postcard = false;
     person_alert = n.subscribe("person_present", 10);
     this.set_goal();
   }
@@ -42,7 +38,6 @@ private:
   ros::ServiceClient tpmap_reciever;
   ros::Publisher goal_pub;
   geometry_msgs::PoseWithCovarianceStampedMessage current_position;
-  //ros::ServiceClient current_position;
   ros::Subscriber sub;
   ros::Subscriber person_alert;
   actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> action_client;
@@ -50,7 +45,6 @@ private:
   hide_and_seek::tp_map_srv ottpm;  //The one true tourist point map
   bool first_spin;
   int goal_index;
-  //ros::ServiceServer set_goalster;
 };
 
 void GoalSetter::current_pos_retriever(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& current_pos){  //I think the ConstPtr thing there is extraneous   LOL JK
@@ -61,7 +55,7 @@ void GoalSetter::current_pos_retriever(const geometry_msgs::PoseWithCovarianceSt
     return;
   }  
   
-  if( (int)(current_position.pose.position.x - current_goal.pose.position.x) / PROXIMITY_THRESHOLD == 0 && (int)(current_position.pose.position.y - current_goal.pose.position.y) / PROXIMITY_THRESHOLD == 0)// i.e. if(close enough)
+  if( (int)((current_position.pose.position.x - current_goal.pose.position.x) + (current_position.pose.position.y - current_goal.pose.position.y)) / PROXIMITY_THRESHOLD == 0)// i.e. if(close enough) Since they're(x and y) both held to the same standard of closeness, we can add them together and divide by that standard (technically this should be divided by 2 again but threshold was pretty large before
   {
       this.set_goal();
   }
@@ -80,9 +74,7 @@ void GoalSetter::person_alert_callback(const std_msgs::Bool::ConstPtr& person_pr
 //call back function for 
 
 void GoalSetter::set_goal()
-{
-  //hide_and_seek::tp_map_srv ottpm;
-  
+{ 
   if(tpmap_reciever.call(ottpm))
   {
 //find closest point and make that the new goal.
