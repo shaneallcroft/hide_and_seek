@@ -1,10 +1,11 @@
-1//I'm here to  S E R V E  you ;) 
+//I'm here to  S E R V E  you ;) 
 #include "ros/ros.h"
 #include "hide_and_seek/tp_msg.h"
 #include "hide_and_seek/tp_map_srv.h"
 #include "nav_msgs/OccupancyGrid.h"//PICK AN ACTUAL MAP MESSAGE YO MAYBE OCCUPANCY GRID??
 #include "nav_msgs/GetMap.h"
 
+#DEFINE PROXIMITY_THRESHOLD 4
 class Mratplg//Map Reciever and Tourist Point List Generator
 {
 
@@ -14,7 +15,8 @@ public:
     tpl_service = n.advertiseService("generate_new_tp_list", generate_new_tpl);
     map_reciever = n.serviceClient<map_server>("map_server");//this cant be right
     ROS_INFO("Ready to generate some A1 TPL's");
-    sub = n.subscribe("amcl_pose", 10, &Mratplg::current_pos_retriever, this);
+    number_of_times_map_refreshed;
+    //sub = n.subscribe("amcl_pose", 10, &Mratplg::current_pos_retriever, this);
   }
       //prototypes bb
   bool Mratplg::generate_new_tpl(hide_and_seek::tp_map_srv::Request &req, hide_and_seek::tp_map_srv::Response &res);
@@ -26,6 +28,7 @@ private:
   //geometry_msgs::PoseWithCovarianceStampedMessage current_position;
   //ros::ServiceClient current_position;
   ros::Subscriber sub;
+  int num_of_times_map_refreshed;
 };
 
 /*  
@@ -35,10 +38,23 @@ void Mratplg::current_pos_retriever(const geometry_msgs::PoseWithCovarianceStamp
 */  
 bool Mratplg::generate_new_tpl(hide_and_seek::tp_map_srv::Request &req, hide_and_seek::tp_map_srv::Response &res)
 {
+  /* if(req.postcard == true)
+  {
+    res.miniverse[req.destination].visited = true;  //"Wish you were here" :)
+    return false;
+  }*/
   nav_msgs::GetMap get_map_srv;//no values needed since this service only gets the map B)
+  
+  //if(num_of_times_map
+  
   if(map_reciever.call(get_map_srv))
   {
     OccupancyGrid map = get_map_srv.response.map;//not positive if this is completely correct
+    ++num_of_times_map_refreshed;
+  }
+  else
+  {
+    return false;
   }
 
   int x_min, x_max, y_min, y_max = -2;
@@ -61,9 +77,9 @@ bool Mratplg::generate_new_tpl(hide_and_seek::tp_map_srv::Request &req, hide_and
       }
     }
   }
-
+  
   res.miniverse[] = new hide_and_seek::tp_msg[ (x_max - x_min) * (y_max - y_min) ];  //tp miniverse
-
+  
   for(int x = x_min; x <= x_max; ++x)
   {
     for(int y = y_min; y <= y_max; ++y)
@@ -86,7 +102,7 @@ bool Mratplg::generate_new_tpl(hide_and_seek::tp_map_srv::Request &req, hide_and
 		hide_and_seek::tp_msg tourist_point;
 		tourist_point.tp_pos.x = x;
 		tourist_point.tp_pos.y = y;
-		tourist_point.visited = false;
+		tourist_point.visited = req.miniverse[miniverse_index].visited;
 		res.miniverse[miniverse_index] = tourist_point;
 		++miniverse_index;
 		prev_check = true;
@@ -117,7 +133,8 @@ bool Mratplg::generate_new_tpl(hide_and_seek::tp_map_srv::Request &req, hide_and
 			 hide_and_seek::tp_msg tourist_point;
 			 tourist_point.tp_pos.x = x;
 			 tourist_point.tp_pos.y = y;
-			 tourist_point.visited = false;
+			 tourist_point.visited = req.miniverse[miniverse_index].visited;
+			 //tourist_point.postcard = false;
 			 res.miniverse[miniverse_index] = tourist_point;
 			 ++miniverse_index;
 			 prev_check = true;
@@ -134,7 +151,21 @@ bool Mratplg::generate_new_tpl(hide_and_seek::tp_map_srv::Request &req, hide_and
       prev_check = false;
     }
   }
+  res.miniverse_size = miniverse_index + 1;
+  //bool can_be_trusted = false;
+
+  if(req.miniverse_size == res.miniverse_size && (int)(res.miniverse[miniverse_index].tp_pos.x - req.miniverse[miniverse_index].tp_pos.x) / PROXIMITY_THRESHOLD == 0 && (int)(res.miniverse[miniverse_index].tp_pos.y - req.miniverse[miniverse_index].tp_pos.y) / PROXIMITY_THRESHOLD == 0)  //ROS help us if this if evaluates false...
+  {
+    return true;  
+  }
+
   
+
+  ROS_INFO("THE MAP HAS CHANGED OR TURTLEBOT HAS BECOME CONFUSED ........ NOW ATTEMPTING TO RE MAP THE VISIT DATA");
+
+  //TODO(shaneallcroft) write code for remapping the visit data
+  
+  //bool[map.info.width * map.info.height] map_pattern
   
   /* SHANE'S WEIRD OCCUPANCY GRID FORCE CODE GRAVEYARD BELOW PAY YOUR RESPECTS HERE
 

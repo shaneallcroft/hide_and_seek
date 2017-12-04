@@ -3,48 +3,117 @@
 #include "hide_and_seek/tp_map_srv.h"
 #include "nav_msgs/OccupancyGrid.h"//PICK AN ACTUAL MAP MESSAGE YO MAYBE OCCUPANCY GRID??
 #include "nav_msgs/GetMap.h"
+#include "move_base_msgs/MoveBaseAction.h"
+#include <actionlib/client/simple_action_client.h>
+#include <math.h>
 
-class goal_setter//Map Reciever and Tourist Point List Generator
+#include PROXIMITY_THRESHOLD 4
+
+class GoalSetter//Map Reciever and Tourist Point List Generator
 {
 
 public:
   GoalSetter()
   {
 //tpl_service = n.advertiseService("generate_new_tp_list", generate_new_tpl);
-    tpmap_reciever = n.serviceClient<tp_map>("tp_list_maker_server");//this cant be right
+    
     sub = n.subscribe("amcl_pose", 10, &GoalSetter::current_pos_retriever, this);
+    first_spin = true;
+    int goal_index -1;
+    ros::spinOnce();  //spun for her pleasure..... and to get the initial position cause set_goal needs it
+    tpmap_reciever = n.serviceClient<hide_and_seek::tp_map>("generate_new_tp_list");  //this cant be right
+    //set_goalster = n.advertiseService("")
+    action_client("move_base", false);  //I'm not positive whether this should be true
+    while(!action_client.waitForServer( ros::Duration(5.0) ))
+    {
+      ROS_INFO("Waiting for the move_base action server to come up");
+    }  //in constructor so it doesnt wait 5 sec after every tourist point
+    //ottpm.request.postcard = false;
+    this.set_goal();
   }
       //prototypes bb
-  bool GoalSetter::set_goal(hide_and_seek::tp_map_srv::Request &req, hide_and_seek::tp_map_srv::Response &res);
+  void GoalSetter::set_goal(hide_and_seek::tp_map_srv::Request &req, hide_and_seek::tp_map_srv::Response &res);
   void current_pos_retriever(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& current_pos);
+
 private:
   ros::NodeHandle n;
   ros::ServiceClient tpmap_reciever;
-ros::Publisher goal_pub;
+  ros::Publisher goal_pub;
   geometry_msgs::PoseWithCovarianceStampedMessage current_position;
   //ros::ServiceClient current_position;
   ros::Subscriber sub;
+  actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> action_client;
+  move_base_msgs::MoveBaseGoal current_goal;
+  hide_and_seek::tp_map_srv ottpm;
+  bool first_spin;
+  int goal_index;
+  //ros::ServiceServer set_goalster;
 };
 
 void GoalSetter::current_pos_retriever(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& current_pos){
   this.current_position = current_pos;
+  if(first_spin) return;
+  
+  if( (int)(current_position.pose.x - current_goal.pose.x) / PROXIMITY_THRESHOLD == 0 && (int)(current_position.pose.y - current_goal.pose.y) / PROXIMITY_THRESHOLD == 0)// i.e. if(close enough)
+  {
+      this.set_goal();
+      ottpm.miniverse
+  }
 }//JUST FINISHED THIS 12:36 AM December 2nd
 
 //call back function for 
 
-void GoalSetter::set_goal(hide_and_seek::tp_map_srv::Request &req, hide_and_seek::tp_map_srv::Response &res)
+void GoalSetter::set_goal()
 {
-  if(tpmap_reciever.call()
+  //hide_and_seek::tp_map_srv ottpm;
+  
+  if(tpmap_reciever.call(ottpm))
   {
-//find closest point and make that the new goal. 
+//find closest point and make that the new goal.
+    
+    move_base_msgs::MoveBaseGoal goal;
+    current_goal.target_pose.header.frame_id = "base_link";
+    current_goal.target_pose.header.stamp = ros::Time::now();
+    hide_and_seek::tp_msg tp_at_current_location;
+    tp_at_current_location.tp_pos.x = current_position.pose.x;
+    tp_at_current_location.tp_pos.y = current_position.pose.y;
+    int index_of_closest_tp = 0;
+    float closest_distance = pow(pow((tp_at_current_location.tp_pos.x - ottpm.miniverse[i].tp_pos.x),2) + pow((tp_at_current_location.tp_pos.y - ottpm.miniverse[index_of_closest_tp].y), 2), .5);
+    if(ottpm.response.miniverse_size == 0)
+    {
+      ROS_INFO("I checked the WHOLE. YOU WON?");//this seems like a dumb ending
+      return;
+    }
+    for(int i = 0; i < ottpm.response.miniverse_size; ++i)
+    {
+	hide_and_seek::tp_msg test_tp = ottpm.miniverse[i];
+	
+	if(test_tp.visited == true)
+	{
+	  continue;
+	}
+	float distance = pow(pow((tp_at_current_location.tp_pos.x - ottpm.miniverse[i].tp_pos.x),2) + pow((tp_at_current_location.tp_pos.y - ottpm.miniverse[index_of_closest_tp].y), 2), .5);
+	if(distance < closest_distance)
+	{
+	    index_of_closest_tp = i;
+	}
+    }
+    
+    ottpm.request.miniverse = ottpm.response.miniverse;  
+    goal_index = index_of_closest_tp;
+    current_goal.target_pose.pose.position.x = ottpm.response.miniverse[goal_index].tp_pos.x;
+    current_goal.target_pose.pose.position.y = ottpm.response.miniverse[goal_index].tp_pos.y;
+    ROS_INFO("New goal chosen at x=%ld, y=%ld" (long int)current_goal.target_pose.pose.position.x, current_goal.target_pose.pose.position.y);
   }
+  return true;
 }
 
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "goal_setter");
 
-  GoalSetter mratplgster;
+  GoalSetter goalSetterster;
+  
   ros::spin();
 
   return 0;
