@@ -8,6 +8,7 @@ project(hide_and_seek)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  message_generation
   geometry_msgs
   roscpp
   sensor_msgs
@@ -54,18 +55,16 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+ add_message_files(
+   FILES
+   tp_msg.msg
+ )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+ add_service_files(
+   FILES
+   tp_map_srv
+ )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -75,10 +74,10 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   geometry_msgs#   sensor_msgs#   std_msgs
-# )
+ generate_messages(
+   DEPENDENCIES
+   geometry_msgs sensor_msgs std_msgs message_generation
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -112,7 +111,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES hide_and_seek
-#  CATKIN_DEPENDS geometry_msgs roscpp rospy sensor_msgs std_msgs
+  CATKIN_DEPENDS geometry_msgs roscpp rospy sensor_msgs std_msgs message_generation geometry_msgs
 #  DEPENDS system_lib
 )
 
@@ -204,3 +203,15 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+add_executable(tp_list_maker_server src/tp_list_maker_server.cpp)
+target_link_libraries(tp_list_maker_server ${catkin_LIBRARIES})
+add_dependencies(tp_list_maker_server hide_and_seek_generate_messages_cpp)
+
+add_executable(goal_setter src/goal_setter.cpp)
+target_link_libraries(goal_setter ${catkin_LIBRARIES})
+add_dependencies(goal_setter hide_and_seek_generate_messages_cpp)
+
+add_executable(people_detector src/people_detector.cpp)
+target_link_libraries(goal_setter ${catkin_LIBRARIES})
+add_dependencies(goal_setter hide_and_seek_generate_messages_cpp)
